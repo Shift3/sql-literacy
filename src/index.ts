@@ -9,10 +9,11 @@ import { step, beforeEach, runAllSteps } from "./runner";
 
 createConnection().then(async connection => {
     await runAllSteps(connection);
+    await resetDatabase(connection);
     await connection.close();
 }).catch(error => console.log(error));
 
-beforeEach(async (connection: Connection) => {
+const resetDatabase = async (connection: Connection) => {
     const dropBeforeSync = true;
     await connection.synchronize(dropBeforeSync);
 
@@ -43,6 +44,10 @@ beforeEach(async (connection: Connection) => {
         await manager.save(profile1);
         await manager.save(profile2);
     });
+};
+
+beforeEach(async (connection: Connection) => {
+    await resetDatabase(connection);
 });
 
 step(async (connection: Connection) => {
@@ -105,6 +110,22 @@ step(async (connection: Connection) => {
         .execute();
 
     await printDatabaseState(connection);
+});
+
+step(async (connection: Connection) => {
+    h1("Question: I want to count how many profiles each user has");
+
+    let result = await connection
+        .createQueryBuilder()
+        .select('user.id', 'id')
+        .from(User, 'user')
+        .addSelect('COUNT(profileAlias.id)::int AS profile_count')
+        .leftJoin('user.profiles', 'profileAlias')
+        .groupBy('user.id')
+        .logSql()
+        .getRawMany()
+    ;
+    console.log(result);
 });
 
 const printDatabaseState = async (connection: Connection) => {
