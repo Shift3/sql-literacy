@@ -1,7 +1,7 @@
 # SQL Literacy Talk
 
-Steps to run this project:
+## Goals of this Talk
 
-1. Run `npm i` command
-2. Setup database settings inside `ormconfig.json` file
-3. Run `npm start` command
+1. Gain a familiarity with SQL syntax.
+1. Understand how to work with sql and typeorm's query builder.
+1. Learn how you might approach the most common queries seen often.
