@@ -5,25 +5,15 @@ import { Profile } from "./entity/Profile";
 import { format } from 'sql-formatter';
 import * as chalk from 'chalk';
 import { highlight } from 'sql-highlight'
+import { step, beforeEach, runAllSteps } from "./runner";
+
 
 createConnection().then(async connection => {
-    await demo(connection);
+    await runAllSteps(connection);
     await connection.close();
 }).catch(error => console.log(error));
 
-const demo = async (connection: Connection) => {
-    hr();
-    await joinWithSelectionDemo(connection);
-    hr();
-    await joinWithoutSelectionDemo(connection);
-    hr();
-    await cascadeDeletionDemo(connection);
-    hr();
-
-    await resetDatabase(connection);
-}
-
-const resetDatabase = async (connection: Connection) => {
+beforeEach(async (connection: Connection) => {
     const dropBeforeSync = true;
     await connection.synchronize(dropBeforeSync);
 
@@ -54,11 +44,9 @@ const resetDatabase = async (connection: Connection) => {
         await manager.save(profile1);
         await manager.save(profile2);
     });
-}
+});
 
-const joinWithSelectionDemo = async (connection: Connection) => {
-    await resetDatabase(connection);
-
+step(async (connection: Connection) => {
     h1('Question: Get me all users and their profiles.');
     const allUsersAndProfiles = await connection
         .createQueryBuilder()
@@ -68,7 +56,8 @@ const joinWithSelectionDemo = async (connection: Connection) => {
         .logSql()
         .getMany();
     console.log(allUsersAndProfiles);
-    hr();
+
+    console.log();
 
     h1('Question: Get me only the users who have profiles.');
     const usersOnlyWithProfiles = await connection
@@ -79,11 +68,9 @@ const joinWithSelectionDemo = async (connection: Connection) => {
         .logSql()
         .getMany();
     console.log(usersOnlyWithProfiles);
-}
+});
 
-const joinWithoutSelectionDemo = async (connection: Connection) => {
-    await resetDatabase(connection);
-
+step(async (connection: Connection) => {
     h1("Question: Find me only users that have profiles");
     const usersWithProfiles = await connection
         .createQueryBuilder()
@@ -93,7 +80,8 @@ const joinWithoutSelectionDemo = async (connection: Connection) => {
         .logSql()
         .getMany();
     console.log(usersWithProfiles);
-    hr();
+
+    console.log();
 
     h1("Question: Find me only users that don't have any profiles");
     const usersWithoutProfiles = await connection
@@ -105,11 +93,9 @@ const joinWithoutSelectionDemo = async (connection: Connection) => {
         .logSql()
         .getMany();
     console.log(usersWithoutProfiles);
-}
+});
 
-const cascadeDeletionDemo = async (connection: Connection) => {
-    await resetDatabase(connection);
-
+step(async (connection: Connection) => {
     h1("Question: I want to delete a user AND it's profiles");
     await connection
         .createQueryBuilder()
@@ -120,7 +106,7 @@ const cascadeDeletionDemo = async (connection: Connection) => {
         .execute();
 
     await printDatabaseState(connection);
-}
+});
 
 const printDatabaseState = async (connection: Connection) => {
     console.log(chalk.black.bgYellowBright("Database State"));
@@ -129,10 +115,6 @@ const printDatabaseState = async (connection: Connection) => {
     const profiles = await connection.getRepository(Profile).find();
     console.log();
     console.log(chalk.yellowBright("Profiles\n"), profiles);
-}
-
-const hr = () => {
-    console.log("----------------------------------------");
 }
 
 const h1 = (str: string) => {
