@@ -7,7 +7,6 @@ import * as chalk from 'chalk';
 import { highlight } from 'sql-highlight'
 import { step, beforeEach, runAllSteps } from "./runner";
 
-
 createConnection().then(async connection => {
     await runAllSteps(connection);
     await connection.close();
@@ -56,9 +55,9 @@ step(async (connection: Connection) => {
         .logSql()
         .getMany();
     console.log(allUsersAndProfiles);
+});
 
-    console.log();
-
+step(async (connection: Connection) => {
     h1('Question: Get me only the users who have profiles.');
     const usersOnlyWithProfiles = await connection
         .createQueryBuilder()
@@ -80,9 +79,9 @@ step(async (connection: Connection) => {
         .logSql()
         .getMany();
     console.log(usersWithProfiles);
+});
 
-    console.log();
-
+step(async (connection: Connection) => {
     h1("Question: Find me only users that don't have any profiles");
     const usersWithoutProfiles = await connection
         .createQueryBuilder()
@@ -145,5 +144,6 @@ QueryBuilder.prototype.logSql = function<Entity>(this: QueryBuilder<Entity>) {
         language: 'postgresql'
     })));
     console.log();
+
     return this;
 };

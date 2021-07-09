@@ -16,8 +16,9 @@ export const runAllSteps = async (connection: Connection) => {
     for (let j = 0; j < beforeEachFunctions.length; ++j) {
       await beforeEachFunctions[j](connection);
     }
-    
+
     await stepFunctions[i](connection);
+
     console.log();
   }
 }
