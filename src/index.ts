@@ -8,15 +8,141 @@ import { highlight } from 'sql-highlight'
 import { xstep, step, beforeEach, runAllSteps } from "./runner";
 
 createConnection().then(async connection => {
-    await runAllSteps(connection);
-    await resetDatabase(connection);
-    await connection.close();
-}).catch(error => console.log(error));
-
-const resetDatabase = async (connection: Connection) => {
+    // NOTE(justin): We sync once at the start then truncate before each step
     const dropBeforeSync = true;
     await connection.synchronize(dropBeforeSync);
 
+    await runAllSteps(connection);
+
+    await connection.close();
+}).catch(error => console.log(error));
+
+beforeEach(async (connection: Connection) => {
+    await resetDatabase(connection);
+});
+
+step('Add a new user', async (connection: Connection) => {
+    await connection
+        .createQueryBuilder()
+        .insert()
+        .into(User)
+        .values({
+            firstName: 'Ham',
+            lastName:  'Burger',
+            age:       2
+        })
+        .logSql()
+        .execute();
+    await printDatabaseState(connection);
+});
+
+step('Get me all users and their purchases', async (connection: Connection) => {
+    const allUsersAndPurchases = await connection
+        .createQueryBuilder()
+        .select('userAlias')
+        .from(User, 'userAlias')
+        .leftJoinAndSelect('userAlias.purchases', 'purchaseAlias')
+        .logSql()
+        .getMany();
+    console.log(allUsersAndPurchases);
+});
+
+step('Get me only the users who have purchases', async (connection: Connection) => {
+    const usersOnlyWithPurchases = await connection
+        .createQueryBuilder()
+        .select('user')
+        .from(User, 'user')
+        .innerJoinAndSelect('user.purchases', 'purchaseAlias')
+        .logSql()
+        .getMany();
+    console.log(usersOnlyWithPurchases);
+});
+
+step('Find me only users that have purchases', async (connection: Connection) => {
+    const usersWithPurchases = await connection
+        .createQueryBuilder()
+        .select('user')
+        .from(User, 'user')
+        .innerJoin('user.purchases', 'purchaseAlias')
+        .logSql()
+        .getMany();
+    console.log(usersWithPurchases);
+});
+
+step("Find me only users that don't have any purchases", async (connection: Connection) => {
+    const usersWithoutPurchases = await connection
+        .createQueryBuilder()
+        .select('user')
+        .from(User, 'user')
+        .leftJoin('user.purchases', 'purchaseAlias')
+        .where('purchaseAlias.id IS NULL')
+        .logSql()
+        .getMany();
+    console.log(usersWithoutPurchases);
+});
+
+step("I want to delete a user AND it's purchases", async (connection: Connection) => {
+    await printDatabaseState(connection);
+    await connection
+        .createQueryBuilder()
+        .delete()
+        .from(User)
+        .where('firstName = :firstName', {firstName: 'With'})
+        .logSql()
+        .execute();
+    await printDatabaseState(connection);
+
+    // NOTE(justin): See User.ts and the associated delete cascade. 
+});
+
+step("I want to count how many purchases each user has", async (connection: Connection) => {
+    let result = await connection
+        .createQueryBuilder()
+        .select('user')
+        .from(User, 'user')
+        .leftJoin('user.purchases', 'purchaseAlias')
+        .groupBy('user.id')
+        .addSelect('COUNT(purchaseAlias.id)::int AS purchase_count')
+        .logSql()
+        .getRawMany();
+    console.log(result);
+});
+
+step("How much has each user purchased?", async (connection: Connection) => {
+    let result = await connection
+        .createQueryBuilder()
+        .select('user.id', 'id')
+        .from(User, 'user')
+        .leftJoin('user.purchases', 'purchaseAlias')
+        .groupBy('user.id')
+        .addSelect('COALESCE(SUM(purchaseAlias.amount), 0)::decimal(10,2) AS total')
+        .logSql()
+        .getRawMany();
+    console.log(result);
+});
+
+const fastTruncateAllTables = async (connection: Connection) => {
+    let entities = await connection.entityMetadatas;
+
+    try {
+        await connection.query(
+            entities.map(e => `ALTER TABLE "${e.tableName}" DISABLE TRIGGER ALL;`).join(" ")
+        );
+        
+        await connection.manager.query(
+            "TRUNCATE " + entities.map(e => `"${e.tableName}"`).join(", ")
+        );
+    } finally {
+        await connection.query(
+            entities.map(e => `ALTER TABLE "${e.tableName}" ENABLE TRIGGER ALL;`).join(" ")
+        );
+    }
+
+};
+
+const resetDatabase = async (connection: Connection) => {
+    await fastTruncateAllTables(connection);
+    
     await connection.transaction(async manager => {
         const userRepository = connection.getRepository(User);
 
@@ -46,110 +172,6 @@ const resetDatabase = async (connection: Connection) => {
         await manager.save(userWithPurchases);
     });
 };
-
-beforeEach(async (connection: Connection) => {
-    await resetDatabase(connection);
-});
-
-step('Add a new user', async (connection: Connection) => {
-    await connection
-        .createQueryBuilder()
-        .insert()
-        .into(User)
-        .values({
-            firstName: 'Ham',
-            lastName:  'Burger',
-            age:       2
-        })
-        .logSql()
-        .execute();
-    await printDatabaseState(connection);
-});
-
-xstep('Get me all users and their purchases', async (connection: Connection) => {
-    const allUsersAndPurchases = await connection
-        .createQueryBuilder()
-        .select('userAlias')
-        .from(User, 'userAlias')
-        .leftJoinAndSelect('userAlias.purchases', 'purchaseAlias')
-        .logSql()
-        .getMany();
-    console.log(allUsersAndPurchases);
-});
-
-xstep('Get me only the users who have purchases', async (connection: Connection) => {
-    const usersOnlyWithPurchases = await connection
-        .createQueryBuilder()
-        .select('user')
-        .from(User, 'user')
-        .innerJoinAndSelect('user.purchases', 'purchaseAlias')
-        .logSql()
-        .getMany();
-    console.log(usersOnlyWithPurchases);
-});
-
-xstep('Find me only users that have purchases', async (connection: Connection) => {
-    const usersWithPurchases = await connection
-        .createQueryBuilder()
-        .select('user')
-        .from(User, 'user')
-        .innerJoin('user.purchases', 'purchaseAlias')
-        .logSql()
-        .getMany();
-    console.log(usersWithPurchases);
-});
-
-xstep("Find me only users that don't have any purchases", async (connection: Connection) => {
-    const usersWithoutPurchases = await connection
-        .createQueryBuilder()
-        .select('user')
-        .from(User, 'user')
-        .leftJoin('user.purchases', 'purchaseAlias')
-        .where('purchaseAlias.id IS NULL')
-        .logSql()
-        .getMany();
-    console.log(usersWithoutPurchases);
-});
-
-xstep("I want to delete a user AND it's purchases", async (connection: Connection) => {
-    await printDatabaseState(connection);
-    await connection
-        .createQueryBuilder()
-        .delete()
-        .from(User)
-        .where('firstName = :firstName', {firstName: 'With'})
-        .logSql()
-        .execute();
-    await printDatabaseState(connection);
-
-    // NOTE(justin): See User.ts and the associated delete cascade. 
-});
-
-xstep("I want to count how many purchases each user has", async (connection: Connection) => {
-    let result = await connection
-        .createQueryBuilder()
-        .select('user')
-        .from(User, 'user')
-        .leftJoin('user.purchases', 'purchaseAlias')
-        .groupBy('user.id')
-        .addSelect('COUNT(purchaseAlias.id)::int AS purchase_count')
-        .logSql()
-        .getRawMany();
-    console.log(result);
-});
-
-xstep("How much has each user purchased?", async (connection: Connection) => {
-    let result = await connection
-        .createQueryBuilder()
-        .select('user.id', 'id')
-        .from(User, 'user')
-        .leftJoin('user.purchases', 'purchaseAlias')
-        .groupBy('user.id')
-        .addSelect('COALESCE(SUM(purchaseAlias.amount), 0)::decimal(10,2) AS total')
-        .logSql()
-        .getRawMany();
-    console.log(result);
-});
 
 const printDatabaseState = async (connection: Connection) => {
     console.log(chalk.black.bgYellowBright("Database State"));

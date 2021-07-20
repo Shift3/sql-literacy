@@ -37,6 +37,7 @@ export const runAllSteps = async (connection: Connection) => {
     if (nsf.skip) {
       console.log(chalk.gray(`Skipping '${nsf.name}'`));
     } else {
+      console.time("Step took");
       for (let j = 0; j < beforeEachFunctions.length; ++j) {
         await beforeEachFunctions[j](connection);
       }
@@ -45,6 +46,8 @@ export const runAllSteps = async (connection: Connection) => {
       console.log();
       h1(nsf.name);
       await nsf.fun(connection);
+      console.log();
+      console.timeEnd("Step took");
       console.log();
     }
   }
