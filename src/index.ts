@@ -153,23 +153,25 @@ const seedDatabase = async (connection: Connection) => {
     });
     await manager.save(userWithoutPurchases);
 
+    const userWithPurchases = userRepository.create({
+      firstName: "With",
+      lastName:  "Purchases",
+      age:       25,
+    });
+    await manager.save(userWithPurchases);
+
     const purchase1  = new Purchase();
     purchase1.name   = "Purchase 1";
     purchase1.amount = 12.50;
+    purchase1.user   = userWithPurchases;
     await manager.save(purchase1);
 
     const purchase2  = new Purchase();
     purchase2.name   = "Purchase 2";
     purchase2.amount = 3.99;
+    purchase2.user   = userWithPurchases;
     await manager.save(purchase2);
 
-    const userWithPurchases = userRepository.create({
-      firstName: "With",
-      lastName:  "Purchases",
-      age:       25,
-      purchases:  [purchase1, purchase2]
-    });
-    await manager.save(userWithPurchases);
   });
 };
 
