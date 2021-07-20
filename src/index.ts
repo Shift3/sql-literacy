@@ -1,5 +1,4 @@
 import "reflect-metadata";
-import "./extend-query-builder";
 import { createConnection, Connection } from "typeorm";
 import { User } from "./entity/User";
 import { Purchase } from "./entity/Purchase";
@@ -7,11 +6,13 @@ import * as chalk from 'chalk';
 import { xblock, block, xstep, step, beforeEach, runAllSteps } from "./runner";
 import { DatabaseCleaner, FullSychronizeStrategy, FastTruncateStrategy } from "./database_cleaner";
 
+import "./extend-query-builder";
+
 beforeEach(async (connection: Connection) => {
   await DatabaseCleaner.clean(connection);
 });
 
-block('The Basics', () => {
+xblock('The Basics', () => {
   step('Add a new user', async (connection: Connection) => {
     await connection
       .createQueryBuilder()
@@ -54,15 +55,15 @@ block('The Basics', () => {
       .execute();
     await printDatabaseState(connection);
 
-    // NOTE(justin): See User.ts and the associated delete cascade. 
+    // NOTE(justin): See User.ts and the associated delete cascade.
   });
 });
 
-xblock('Joins', () => {
+block('Joins', () => {
   beforeEach(async (connection: Connection) => {
     await seedDatabase(connection);
   });
-  
+
   step('Get me all users and their purchases', async (connection: Connection) => {
     const allUsersAndPurchases = await connection
       .createQueryBuilder()
@@ -141,7 +142,7 @@ xblock('Agregations', () => {
   });
 });
 
-const seedDatabase = async (connection: Connection) => {    
+const seedDatabase = async (connection: Connection) => {
   await connection.transaction(async manager => {
     const userRepository = connection.getRepository(User);
 
@@ -156,7 +157,7 @@ const seedDatabase = async (connection: Connection) => {
     purchase1.name   = "Purchase 1";
     purchase1.amount = 12.50;
     await manager.save(purchase1);
-    
+
     const purchase2  = new Purchase();
     purchase2.name   = "Purchase 2";
     purchase2.amount = 3.99;
@@ -182,10 +183,9 @@ const printDatabaseState = async (connection: Connection) => {
 }
 
 createConnection().then(async connection => {
-  DatabaseCleaner.useStrategy(new FullSychronizeStrategy());
+  DatabaseCleaner.useStrategy(FullSychronizeStrategy);
   await DatabaseCleaner.clean(connection);
-  DatabaseCleaner.useStrategy(new FastTruncateStrategy());
+  DatabaseCleaner.useStrategy(FastTruncateStrategy);
   await runAllSteps(connection);
   await connection.close();
 }).catch(error => console.log(error));
-

@@ -4,40 +4,54 @@ export interface IDatabaseCleanerStrategy {
     do: (connection: Connection) => void,
 }
 
-export class FastTruncateStrategy implements IDatabaseCleanerStrategy {
+class FastTruncateStrategyImpl implements IDatabaseCleanerStrategy {
     async do (connection: Connection) {
-        let entities = await connection.entityMetadatas;
+        let entities = connection.entityMetadatas;
 
         try {
             await connection.query(
-                entities.map(e => `ALTER TABLE "${e.tableName}" DISABLE TRIGGER ALL;`).join(" ")
+                entities
+                    .map(e => `ALTER TABLE "${e.tableName}" DISABLE TRIGGER ALL;`)
+                    .join(' ')
             );
-            
+
             await connection.manager.query(
-                "TRUNCATE " + entities.map(e => `"${e.tableName}"`).join(", ")
+                'TRUNCATE ' + entities
+                    .map(e => `"${e.tableName}"`)
+                    .join(', ')
             );
         } finally {
             await connection.query(
-                entities.map(e => `ALTER TABLE "${e.tableName}" ENABLE TRIGGER ALL;`).join(" ")
+                entities
+                    .map(e => `ALTER TABLE "${e.tableName}" ENABLE TRIGGER ALL;`)
+                    .join(' ')
             );
         }
     }
 }
 
-export class FullSychronizeStrategy implements IDatabaseCleanerStrategy {
-  async do (connection: Connection) {
-    const dropBeforeSync = true;
-    await connection.synchronize(dropBeforeSync);
-  }
+class FullSychronizeStrategyImpl implements IDatabaseCleanerStrategy {
+    async do (connection: Connection) {
+        const dropBeforeSync = true;
+        await connection.synchronize(dropBeforeSync);
+    }
 }
 
+class NullStrategyImpl implements IDatabaseCleanerStrategy {
+    do (_: Connection) {}
+}
+
+export const FastTruncateStrategy   = new FastTruncateStrategyImpl();
+export const FullSychronizeStrategy = new FullSychronizeStrategyImpl();
+export const NullStrategy           = new NullStrategyImpl();
+
 export class DatabaseCleaner {
-    private static strategy: IDatabaseCleanerStrategy = new FastTruncateStrategy();
-    
+    private static strategy: IDatabaseCleanerStrategy = FastTruncateStrategy;
+
     static useStrategy(strategy: IDatabaseCleanerStrategy) {
         this.strategy = strategy;
     }
-    
+
     static async clean(connection: Connection) {
         await this.strategy.do(connection);
     }
