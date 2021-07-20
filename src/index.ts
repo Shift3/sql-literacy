@@ -1,148 +1,147 @@
 import "reflect-metadata";
-import { createConnection, Connection, QueryBuilder } from "typeorm";
+import "./extend-query-builder";
+import { createConnection, Connection } from "typeorm";
 import { User } from "./entity/User";
 import { Purchase } from "./entity/Purchase";
-import { format } from 'sql-formatter';
 import * as chalk from 'chalk';
-import { highlight } from 'sql-highlight'
-import { xstep, step, beforeEach, runAllSteps } from "./runner";
-
-createConnection().then(async connection => {
-    // NOTE(justin): We sync once at the start then truncate before each step
-    const dropBeforeSync = true;
-    await connection.synchronize(dropBeforeSync);
-
-    await runAllSteps(connection);
-
-    await connection.close();
-}).catch(error => console.log(error));
+import { xblock, block, xstep, step, beforeEach, runAllSteps } from "./runner";
+import { DatabaseCleaner, FullSychronizeStrategy, FastTruncateStrategy } from "./database_cleaner";
 
 beforeEach(async (connection: Connection) => {
-    await resetDatabase(connection);
+    await DatabaseCleaner.clean(connection);
 });
 
-step('Add a new user', async (connection: Connection) => {
-    await connection
-        .createQueryBuilder()
-        .insert()
-        .into(User)
-        .values({
-            firstName: 'Ham',
-            lastName:  'Burger',
-            age:       2
-        })
-        .logSql()
-        .execute();
-    await printDatabaseState(connection);
+xblock('The Basics', () => {
+    step('Add a new user', async (connection: Connection) => {
+        await connection
+            .createQueryBuilder()
+            .insert()
+            .into(User)
+            .values({
+                firstName: 'Ham',
+                lastName:  'Burger',
+                age:       2
+            })
+            .logSql()
+            .execute();
+        await printDatabaseState(connection);
+    });
+
+    step('Update a user', async (connection: Connection) => {
+        await seedDatabase(connection);
+        await connection
+            .createQueryBuilder()
+            .update(User)
+            .set({
+                lastName: "New Last Name",
+                age:      500,
+            })
+            .where("firstName = :firstName", { firstName: 'With' })
+            .logSql()
+            .execute();
+        await printDatabaseState(connection);
+    });
+
+    step("Delete a user AND it's purchases", async (connection: Connection) => {
+        await seedDatabase(connection);
+        await printDatabaseState(connection);
+        await connection
+            .createQueryBuilder()
+            .delete()
+            .from(User)
+            .where('firstName = :firstName', {firstName: 'With'})
+            .logSql()
+            .execute();
+        await printDatabaseState(connection);
+
+        // NOTE(justin): See User.ts and the associated delete cascade. 
+    });
 });
 
-step('Get me all users and their purchases', async (connection: Connection) => {
-    const allUsersAndPurchases = await connection
-        .createQueryBuilder()
-        .select('userAlias')
-        .from(User, 'userAlias')
-        .leftJoinAndSelect('userAlias.purchases', 'purchaseAlias')
-        .logSql()
-        .getMany();
-    console.log(allUsersAndPurchases);
-});
-
-step('Get me only the users who have purchases', async (connection: Connection) => {
-    const usersOnlyWithPurchases = await connection
-        .createQueryBuilder()
-        .select('user')
-        .from(User, 'user')
-        .innerJoinAndSelect('user.purchases', 'purchaseAlias')
-        .logSql()
-        .getMany();
-    console.log(usersOnlyWithPurchases);
-});
-
-step('Find me only users that have purchases', async (connection: Connection) => {
-    const usersWithPurchases = await connection
-        .createQueryBuilder()
-        .select('user')
-        .from(User, 'user')
-        .innerJoin('user.purchases', 'purchaseAlias')
-        .logSql()
-        .getMany();
-    console.log(usersWithPurchases);
-});
-
-step("Find me only users that don't have any purchases", async (connection: Connection) => {
-    const usersWithoutPurchases = await connection
-        .createQueryBuilder()
-        .select('user')
-        .from(User, 'user')
-        .leftJoin('user.purchases', 'purchaseAlias')
-        .where('purchaseAlias.id IS NULL')
-        .logSql()
-        .getMany();
-    console.log(usersWithoutPurchases);
-});
-
-step("I want to delete a user AND it's purchases", async (connection: Connection) => {
-    await printDatabaseState(connection);
-    await connection
-        .createQueryBuilder()
-        .delete()
-        .from(User)
-        .where('firstName = :firstName', {firstName: 'With'})
-        .logSql()
-        .execute();
-    await printDatabaseState(connection);
-
-    // NOTE(justin): See User.ts and the associated delete cascade. 
-});
-
-step("I want to count how many purchases each user has", async (connection: Connection) => {
-    let result = await connection
-        .createQueryBuilder()
-        .select('user')
-        .from(User, 'user')
-        .leftJoin('user.purchases', 'purchaseAlias')
-        .groupBy('user.id')
-        .addSelect('COUNT(purchaseAlias.id)::int AS purchase_count')
-        .logSql()
-        .getRawMany();
-    console.log(result);
-});
-
-step("How much has each user purchased?", async (connection: Connection) => {
-    let result = await connection
-        .createQueryBuilder()
-        .select('user.id', 'id')
-        .from(User, 'user')
-        .leftJoin('user.purchases', 'purchaseAlias')
-        .groupBy('user.id')
-        .addSelect('COALESCE(SUM(purchaseAlias.amount), 0)::decimal(10,2) AS total')
-        .logSql()
-        .getRawMany();
-    console.log(result);
-});
-
-const fastTruncateAllTables = async (connection: Connection) => {
-    let entities = await connection.entityMetadatas;
-
-    try {
-        await connection.query(
-            entities.map(e => `ALTER TABLE "${e.tableName}" DISABLE TRIGGER ALL;`).join(" ")
-        );
-        
-        await connection.manager.query(
-            "TRUNCATE " + entities.map(e => `"${e.tableName}"`).join(", ")
-        );
-    } finally {
-        await connection.query(
-            entities.map(e => `ALTER TABLE "${e.tableName}" ENABLE TRIGGER ALL;`).join(" ")
-        );
-    }
-
-};
-
-const resetDatabase = async (connection: Connection) => {
-    await fastTruncateAllTables(connection);
+block('Joins', () => {
+    beforeEach(async (connection: Connection) => {
+        await seedDatabase(connection);
+    });
     
+    step('Get me all users and their purchases', async (connection: Connection) => {
+        const allUsersAndPurchases = await connection
+            .createQueryBuilder()
+            .select('userAlias')
+            .from(User, 'userAlias')
+            .leftJoinAndSelect('userAlias.purchases', 'purchaseAlias')
+            .logSql()
+            .getMany();
+        console.log(allUsersAndPurchases);
+    });
+
+    step('Get me only the users who have purchases', async (connection: Connection) => {
+        const usersOnlyWithPurchases = await connection
+            .createQueryBuilder()
+            .select('user')
+            .from(User, 'user')
+            .innerJoinAndSelect('user.purchases', 'purchaseAlias')
+            .logSql()
+            .getMany();
+        console.log(usersOnlyWithPurchases);
+    });
+
+    step('Find me only users that have purchases', async (connection: Connection) => {
+        const usersWithPurchases = await connection
+            .createQueryBuilder()
+            .select('user')
+            .from(User, 'user')
+            .innerJoin('user.purchases', 'purchaseAlias')
+            .logSql()
+            .getMany();
+        console.log(usersWithPurchases);
+    });
+
+    step("Find me only users that don't have any purchases", async (connection: Connection) => {
+        const usersWithoutPurchases = await connection
+            .createQueryBuilder()
+            .select('user')
+            .from(User, 'user')
+            .leftJoin('user.purchases', 'purchaseAlias')
+            .where('purchaseAlias.id IS NULL')
+            .logSql()
+            .getMany();
+        console.log(usersWithoutPurchases);
+    });
+});
+
+xblock('Agregations', () => {
+    beforeEach(async (connection: Connection) => {
+        await seedDatabase(connection);
+    });
+
+    step("I want to count how many purchases each user has", async (connection: Connection) => {
+        let result = await connection
+            .createQueryBuilder()
+            .select('user')
+            .from(User, 'user')
+            .leftJoin('user.purchases', 'purchaseAlias')
+            .groupBy('user.id')
+            .addSelect('COUNT(purchaseAlias.id)::int AS purchase_count')
+            .logSql()
+            .getRawMany();
+        console.log(result);
+    });
+
+    step("How much has each user purchased?", async (connection: Connection) => {
+        let result = await connection
+            .createQueryBuilder()
+            .select('user.id', 'id')
+            .from(User, 'user')
+            .leftJoin('user.purchases', 'purchaseAlias')
+            .groupBy('user.id')
+            .addSelect('COALESCE(SUM(purchaseAlias.amount), 0)::decimal(10,2) AS total')
+            .logSql()
+            .getRawMany();
+        console.log(result);
+    });
+});
+
+const seedDatabase = async (connection: Connection) => {    
     await connection.transaction(async manager => {
         const userRepository = connection.getRepository(User);
 
@@ -182,34 +181,11 @@ const printDatabaseState = async (connection: Connection) => {
     console.log(chalk.redBright("Purchases\n"), purchases);
 }
 
-// NOTE(justin): extend query builder with better logging
-declare module 'typeorm/query-builder/QueryBuilder' {
-    interface QueryBuilder<Entity> {
-        logSql(): this;
-    }
-}
+createConnection().then(async connection => {
+    DatabaseCleaner.useStrategy(new FullSychronizeStrategy());
+    await DatabaseCleaner.clean(connection);
+    DatabaseCleaner.useStrategy(new FastTruncateStrategy());
+    await runAllSteps(connection);
+    await connection.close();
+}).catch(error => console.log(error));
 
-QueryBuilder.prototype.logSql = function<Entity>(this: QueryBuilder<Entity>) {
-    let [query, params] = this.getQueryAndParameters();
-
-    // HACK(justin): getQueryAndParameters also mutates
-    // state.... makes inserts fail on execute, unmutate the state
-    this.expressionMap.nativeParameters = {};
-    
-    // NOTE(justin): typeorm params are 1 indexed
-    params.unshift(null);
-
-    // NOTE(justin): Make sql-formatter compliant query string and param list.
-    query  = query.replace(/\$/g, ':')
-    params = params.map(param => typeof param == 'string' ? `'${param}'` : param);
-
-    console.log()
-    console.log(highlight(format(query, {
-        params,
-        uppercase: true,
-        language: 'postgresql'
-    })));
-    console.log();
-
-    return this;
-};
