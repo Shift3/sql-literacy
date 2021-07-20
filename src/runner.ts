@@ -1,10 +1,24 @@
+import * as chalk from 'chalk';
 import { Connection } from "typeorm";
 
-const stepFunctions:       Array<(connection: Connection) => void> = [];
+interface NamedStepFunction {
+  name: string,
+  fun:  (connection: Connection) => void,
+};
+
+const h1 = (str: string) => {
+  console.log(chalk.white.bold.bgBlue(str));
+}
+
+const hr = () => {
+  console.log('----------------------------------------------------------------');
+}
+
+const stepFunctions:       Array<NamedStepFunction>                = [];
 const beforeEachFunctions: Array<(connection: Connection) => void> = [];
 
-export const step = async (fun: (connection: Connection) => void) => {
-  stepFunctions.push(fun);
+export const step = async (name: string, fun: (connection: Connection) => void) => {
+  stepFunctions.push({ name, fun } as NamedStepFunction);
 }
 
 export const beforeEach = async(fun: (connection: Connection) => void) => {
@@ -17,8 +31,10 @@ export const runAllSteps = async (connection: Connection) => {
       await beforeEachFunctions[j](connection);
     }
 
-    await stepFunctions[i](connection);
-
+    hr();
+    console.log();
+    h1(stepFunctions[i].name);
+    await stepFunctions[i].fun(connection);
     console.log();
   }
 }
