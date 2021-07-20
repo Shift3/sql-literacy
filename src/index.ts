@@ -1,11 +1,11 @@
 import "reflect-metadata";
 import { createConnection, Connection, QueryBuilder } from "typeorm";
 import { User } from "./entity/User";
-import { Profile } from "./entity/Profile";
+import { Purchase } from "./entity/Purchase";
 import { format } from 'sql-formatter';
 import * as chalk from 'chalk';
 import { highlight } from 'sql-highlight'
-import { step, beforeEach, runAllSteps } from "./runner";
+import { xstep, step, beforeEach, runAllSteps } from "./runner";
 
 createConnection().then(async connection => {
     await runAllSteps(connection);
@@ -20,28 +20,30 @@ const resetDatabase = async (connection: Connection) => {
     await connection.transaction(async manager => {
         const userRepository = connection.getRepository(User);
 
-        const userWithoutProfiles = userRepository.create({
+        const userWithoutPurchases = userRepository.create({
             firstName: "Without",
-            lastName:  "Profiles",
+            lastName:  "Purchases",
             age:       99,
         });
-        await manager.save(userWithoutProfiles);
+        await manager.save(userWithoutPurchases);
 
-        const profile1 = new Profile();
-        profile1.name = "Profile 1";
-        await manager.save(profile1);
+        const purchase1  = new Purchase();
+        purchase1.name   = "Purchase 1";
+        purchase1.amount = 12.50;
+        await manager.save(purchase1);
         
-        const profile2 = new Profile();
-        profile2.name = "Profile 2";
-        await manager.save(profile2);
+        const purchase2  = new Purchase();
+        purchase2.name   = "Purchase 2";
+        purchase2.amount = 3.99;
+        await manager.save(purchase2);
 
-        const userWithProfiles = userRepository.create({
+        const userWithPurchases = userRepository.create({
             firstName: "With",
-            lastName:  "Profiles",
+            lastName:  "Purchases",
             age:       25,
-            profiles:  [profile1, profile2]
+            purchases:  [purchase1, purchase2]
         });
-        await manager.save(userWithProfiles);
+        await manager.save(userWithPurchases);
     });
 };
 
@@ -49,52 +51,67 @@ beforeEach(async (connection: Connection) => {
     await resetDatabase(connection);
 });
 
-step('Get me all users and their profiles.', async (connection: Connection) => {
-    const allUsersAndProfiles = await connection
+step('Add a new user', async (connection: Connection) => {
+    await connection
+        .createQueryBuilder()
+        .insert()
+        .into(User)
+        .values({
+            firstName: 'Ham',
+            lastName:  'Burger',
+            age:       2
+        })
+        .logSql()
+        .execute();
+    await printDatabaseState(connection);
+});
+
+xstep('Get me all users and their purchases', async (connection: Connection) => {
+    const allUsersAndPurchases = await connection
         .createQueryBuilder()
         .select('userAlias')
         .from(User, 'userAlias')
-        .leftJoinAndSelect('userAlias.profiles', 'profileAlias')
+        .leftJoinAndSelect('userAlias.purchases', 'purchaseAlias')
         .logSql()
         .getMany();
-    console.log(allUsersAndProfiles);
+    console.log(allUsersAndPurchases);
 });
 
-step('Get me only the users who have profiles.', async (connection: Connection) => {
-    const usersOnlyWithProfiles = await connection
+xstep('Get me only the users who have purchases', async (connection: Connection) => {
+    const usersOnlyWithPurchases = await connection
         .createQueryBuilder()
         .select('user')
         .from(User, 'user')
-        .innerJoinAndSelect('user.profiles', 'profileAlias')
+        .innerJoinAndSelect('user.purchases', 'purchaseAlias')
         .logSql()
         .getMany();
-    console.log(usersOnlyWithProfiles);
+    console.log(usersOnlyWithPurchases);
 });
 
-step('Find me only users that have profiles', async (connection: Connection) => {
-    const usersWithProfiles = await connection
+xstep('Find me only users that have purchases', async (connection: Connection) => {
+    const usersWithPurchases = await connection
         .createQueryBuilder()
         .select('user')
         .from(User, 'user')
-        .innerJoin('user.profiles', 'profileAlias')
+        .innerJoin('user.purchases', 'purchaseAlias')
         .logSql()
         .getMany();
-    console.log(usersWithProfiles);
+    console.log(usersWithPurchases);
 });
 
-step("Find me only users that don't have any profiles", async (connection: Connection) => {
-    const usersWithoutProfiles = await connection
+xstep("Find me only users that don't have any purchases", async (connection: Connection) => {
+    const usersWithoutPurchases = await connection
         .createQueryBuilder()
         .select('user')
         .from(User, 'user')
-        .leftJoin('user.profiles', 'profileAlias')
-        .where('profileAlias.id IS NULL')
+        .leftJoin('user.purchases', 'purchaseAlias')
+        .where('purchaseAlias.id IS NULL')
         .logSql()
         .getMany();
-    console.log(usersWithoutProfiles);
+    console.log(usersWithoutPurchases);
 });
 
-step("I want to delete a user AND it's profiles", async (connection: Connection) => {
+xstep("I want to delete a user AND it's purchases", async (connection: Connection) => {
     await printDatabaseState(connection);
     await connection
         .createQueryBuilder()
@@ -108,14 +125,27 @@ step("I want to delete a user AND it's profiles", async (connection: Connection)
     // NOTE(justin): See User.ts and the associated delete cascade. 
 });
 
-step("I want to count how many profiles each user has", async (connection: Connection) => {
+xstep("I want to count how many purchases each user has", async (connection: Connection) => {
     let result = await connection
         .createQueryBuilder()
         .select('user')
         .from(User, 'user')
-        .leftJoin('user.profiles', 'profileAlias')
-        .addSelect('COUNT(profileAlias.id)::int AS profile_count')
+        .leftJoin('user.purchases', 'purchaseAlias')
         .groupBy('user.id')
+        .addSelect('COUNT(purchaseAlias.id)::int AS purchase_count')
+        .logSql()
+        .getRawMany();
+    console.log(result);
+});
+
+xstep("How much has each user purchased?", async (connection: Connection) => {
+    let result = await connection
+        .createQueryBuilder()
+        .select('user.id', 'id')
+        .from(User, 'user')
+        .leftJoin('user.purchases', 'purchaseAlias')
+        .groupBy('user.id')
+        .addSelect('COALESCE(SUM(purchaseAlias.amount), 0)::decimal(10,2) AS total')
         .logSql()
         .getRawMany();
     console.log(result);
@@ -125,9 +155,9 @@ const printDatabaseState = async (connection: Connection) => {
     console.log(chalk.black.bgYellowBright("Database State"));
     const users = await connection.getRepository(User).find();
     console.log(chalk.redBright("Users\n"), users);
-    const profiles = await connection.getRepository(Profile).find();
+    const purchases = await connection.getRepository(Purchase).find();
     console.log();
-    console.log(chalk.redBright("Profiles\n"), profiles);
+    console.log(chalk.redBright("Purchases\n"), purchases);
 }
 
 // NOTE(justin): extend query builder with better logging
@@ -140,6 +170,10 @@ declare module 'typeorm/query-builder/QueryBuilder' {
 QueryBuilder.prototype.logSql = function<Entity>(this: QueryBuilder<Entity>) {
     let [query, params] = this.getQueryAndParameters();
 
+    // HACK(justin): getQueryAndParameters also mutates
+    // state.... makes inserts fail on execute, unmutate the state
+    this.expressionMap.nativeParameters = {};
+    
     // NOTE(justin): typeorm params are 1 indexed
     params.unshift(null);
 

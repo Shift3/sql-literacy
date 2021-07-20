@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany} from "typeorm";
-import { Profile } from "./Profile";
+import { Purchase } from "./Purchase";
 
 @Entity()
 export class User {
@@ -16,7 +16,7 @@ export class User {
     @Column()
     age: number;
 
-    @OneToMany(() => Profile, profile => profile.user)
-    profiles: Profile[];
+    @OneToMany(() => Purchase, purchase => purchase.user)
+    purchases: Purchase[];
 
 }
