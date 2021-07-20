@@ -11,7 +11,7 @@ beforeEach(async (connection: Connection) => {
     await DatabaseCleaner.clean(connection);
 });
 
-xblock('The Basics', () => {
+block('The Basics', () => {
     step('Add a new user', async (connection: Connection) => {
         await connection
             .createQueryBuilder()
@@ -58,7 +58,7 @@ xblock('The Basics', () => {
     });
 });
 
-block('Joins', () => {
+xblock('Joins', () => {
     beforeEach(async (connection: Connection) => {
         await seedDatabase(connection);
     });
