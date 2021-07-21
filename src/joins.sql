@@ -1,5 +1,6 @@
 /* Joins */
 
+/* Database setup */
 DELETE FROM "purchase";
 DELETE FROM "user";
 
@@ -20,12 +21,14 @@ INSERT INTO "purchase"
 SELECT
        5.45, 'Purchase 2', u.id
 FROM "user" u WHERE "firstName" = 'With';
+/* End Database setup */
 
 
 SELECT * FROM "user";
 SELECT * FROM "purchase";
 
 
+/* users AND their purchases */
 SELECT *
 FROM "user"
 LEFT OUTER JOIN
@@ -34,6 +37,7 @@ ON
       "user"."id" = "purchase"."userId";
 
 
+/* users AND their purchases even if they have none */
 SELECT *
 FROM "user"
 INNER JOIN
@@ -41,6 +45,7 @@ INNER JOIN
 ON
       "user"."id" = "purchase"."userId";
 
+/* only users who have purchases */
 SELECT DISTINCT
        "user".*
 FROM "user"
@@ -49,7 +54,7 @@ INNER JOIN
 ON
       "user"."id" = "purchase"."userId";
 
-
+/* only users who do not have purchases */
 SELECT
        "user".*
 FROM "user"

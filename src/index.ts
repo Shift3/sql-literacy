@@ -59,7 +59,7 @@ xblock('The Basics', () => {
   });
 });
 
-block('Joins', () => {
+xblock('Joins', () => {
   beforeEach(async (connection: Connection) => {
     await seedDatabase(connection);
   });
@@ -110,7 +110,7 @@ block('Joins', () => {
   });
 });
 
-xblock('Agregations', () => {
+block('Agregations', () => {
   beforeEach(async (connection: Connection) => {
     await seedDatabase(connection);
   });
