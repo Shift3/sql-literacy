@@ -7,6 +7,7 @@ import { xblock, block, xstep, step, beforeEach, runAllSteps } from "./runner";
 import { DatabaseCleaner, FullSychronizeStrategy, FastTruncateStrategy } from "./database_cleaner";
 
 import "./extend-query-builder";
+import { Store } from "./entity/Store";
 
 beforeEach(async (connection: Connection) => {
   await DatabaseCleaner.clean(connection);
@@ -110,7 +111,7 @@ xblock('Joins', () => {
   });
 });
 
-block('Agregations', () => {
+xblock('Agregations', () => {
   beforeEach(async (connection: Connection) => {
     await seedDatabase(connection);
   });
@@ -139,6 +140,82 @@ block('Agregations', () => {
       .logSql()
       .getRawMany();
     console.log(result);
+  });
+});
+
+block('Bonus: Geolocation', () => {
+
+  beforeEach(async (connection: Connection) => {
+    await connection
+      .createQueryBuilder()
+      .insert()
+      .into(Store)
+      .values([
+        {
+          name: "Denny's",
+          location: () => {
+            return `ST_SetSRID(ST_GeomFromGeoJSON('{"type": "Point", "coordinates": [-119.6941732, 36.8379970]}'), 4326) :: geometry`;
+          }
+        },
+        {
+          name: "Bobby Salazar's Taqueria",
+          location: () => {
+            return `ST_SetSRID(ST_GeomFromGeoJSON('{"type": "Point", "coordinates": [-119.6836340, 36.8391925]}'), 4326) :: geometry`;
+          }
+        },
+        {
+          name: "Dickey's",
+          location: () => {
+            return `ST_SetSRID(ST_GeomFromGeoJSON('{"type": "Point", "coordinates": [-119.6863092, 36.8370508]}'), 4326) :: geometry`;
+          }
+        },
+        {
+          name: "Tokyo Steakhouse",
+          location: () => {
+            return `ST_SetSRID(ST_GeomFromGeoJSON('{"type": "Point", "coordinates": [-119.6813979, 36.8390289]}'), 4326) :: geometry`;
+          }
+        },
+        {
+          name: "House of Juju",
+          location: () => {
+            return `ST_SetSRID(ST_GeomFromGeoJSON('{"type": "Point", "coordinates": [-119.7018081, 36.8235597]}'), 4326) :: geometry`;
+          }
+        },
+      ])
+      .execute();
+  });
+
+  step("Find stores in a radius around me", async (connection: Connection) => {
+    const myLocation = {
+      type: "Point",
+      coordinates: [
+        "-119.7024",
+        "36.8406",
+      ]
+    };
+
+    let storesInRadius = await connection
+      .createQueryBuilder()
+      .select('store')
+      .from(Store, 'store')
+      .addSelect(`
+        ST_Distance(
+          ST_Transform(store.location, 900913),
+          ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON(:location), 4326), 900913)
+        ) as distance_in_meters`)
+      .where(`
+        ST_DWithin(
+          ST_Transform(store.location, 900913),
+          ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON(:location), 4326), 900913),
+          :meters
+        )`, { meters: 2000 })
+      .setParameters({
+        location: JSON.stringify(myLocation)
+      })
+      .orderBy('distance_in_meters', 'ASC')
+      .logSql()
+      .getRawMany();
+    console.log(storesInRadius);
   });
 });
 
