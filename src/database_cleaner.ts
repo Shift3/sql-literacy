@@ -8,6 +8,9 @@ class FastTruncateStrategyImpl implements IDatabaseCleanerStrategy {
     async do (connection: Connection) {
         let entities = connection.entityMetadatas;
 
+        if (entities.length == 0)
+            return;
+        
         try {
             await connection.query(
                 entities

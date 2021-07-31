@@ -8,12 +8,13 @@ import { DatabaseCleaner, FullSychronizeStrategy, FastTruncateStrategy } from ".
 
 import "./extend-query-builder";
 import { Store } from "./entity/Store";
+import { Course } from "./entity/Course";
 
 beforeEach(async (connection: Connection) => {
   await DatabaseCleaner.clean(connection);
 });
 
-xblock('The Basics', () => {
+block('The Basics', () => {
   step('Add a new user', async (connection: Connection) => {
     await connection
       .createQueryBuilder()
@@ -60,7 +61,7 @@ xblock('The Basics', () => {
   });
 });
 
-xblock('Joins', () => {
+block('Joins', () => {
   beforeEach(async (connection: Connection) => {
     await seedDatabase(connection);
   });
@@ -109,9 +110,31 @@ xblock('Joins', () => {
       .getMany();
     console.log(usersWithoutPurchases);
   });
+
+  step('Traverse a many-to-many join table', async (connection: Connection) => {
+    const usersWithCourses = await connection
+      .createQueryBuilder()
+      .select('user')
+      .from(User, 'user')
+      .leftJoinAndSelect('user.courses', 'coursesAlias')
+      .logSql()
+      .getMany();
+    console.log(usersWithCourses);
+  });
+
+  step('Traverse a many-to-many join table in the other direction', async (connection: Connection) => {
+    const coursesWithUsers = await connection
+      .createQueryBuilder()
+      .select('course')
+      .from(Course, 'course')
+      .leftJoinAndSelect('course.users', 'userAlias')
+      .logSql()
+      .getMany();
+    console.log(coursesWithUsers);
+  });
 });
 
-xblock('Agregations', () => {
+block('Agregations', () => {
   beforeEach(async (connection: Connection) => {
     await seedDatabase(connection);
   });
@@ -248,6 +271,15 @@ const seedDatabase = async (connection: Connection) => {
     purchase2.amount = 3.99;
     purchase2.user   = userWithPurchases;
     await manager.save(purchase2);
+
+    const course = new Course();
+    course.name = "Course";
+    await manager.save(course);
+
+    userWithPurchases.courses    = [ course ];
+    userWithoutPurchases.courses = [ course ];
+    await manager.save(userWithPurchases);
+    await manager.save(userWithoutPurchases);
 
   });
 };
