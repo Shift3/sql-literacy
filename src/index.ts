@@ -4,7 +4,7 @@ import { User } from "./entity/User";
 import { Purchase } from "./entity/Purchase";
 import * as chalk from 'chalk';
 import { xblock, block, xstep, step, beforeEach, runAllSteps } from "./runner";
-import { DatabaseCleaner, FullSychronizeStrategy, FastTruncateStrategy } from "./database_cleaner";
+import { DatabaseCleaner, FullSychronizeStrategy, FastTruncateStrategy } from "typeorm-database-cleaner";
 
 import "./extend-query-builder";
 import { Store } from "./entity/Store";

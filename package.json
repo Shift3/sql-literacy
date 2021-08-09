@@ -14,7 +14,8 @@
       "reflect-metadata": "^0.1.10",
       "sql-formatter": "^4.0.2",
       "sql-highlight": "^3.3.3",
-      "typeorm": "0.2.34"
+      "typeorm": "0.2.34",
+      "typeorm-database-cleaner": "^1.0.1"
    },
    "scripts": {
       "start": "ts-node src/index.ts"
