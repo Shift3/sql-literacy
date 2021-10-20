@@ -1,0 +1,156 @@
+% Created 2021-10-20 Wed 14:22
+% Intended LaTeX compiler: pdflatex
+\documentclass[presentation]{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{grffile}
+\usepackage{longtable}
+\usepackage{wrapfig}
+\usepackage{rotating}
+\usepackage[normalem]{ulem}
+\usepackage{amsmath}
+\usepackage{textcomp}
+\usepackage{amssymb}
+\usepackage{capt-of}
+\usepackage{hyperref}
+\usetheme{Szeged}
+\author{Justin Schiff}
+\date{\today}
+\title{SQL Literacy}
+\hypersetup{
+ pdfauthor={Justin Schiff},
+ pdftitle={SQL Literacy},
+ pdfkeywords={},
+ pdfsubject={},
+ pdfcreator={Emacs 27.1 (Org mode 9.3)}, 
+ pdflang={English}}
+\begin{document}
+
+\maketitle
+\begin{frame}{Outline}
+\tableofcontents
+\end{frame}
+
+
+\section{Intro}
+\label{sec:org88fc326}
+
+\begin{frame}[label={sec:orgc8bb363}]{Why SQL Databases?}
+\begin{itemize}
+\item built for data storage and retrieval
+\item fast and optimized for this task
+\item data integrity
+\item relational
+\end{itemize}
+
+once your data reaches thousands/tens of thousands of records, doing
+the processing in javascript will be unfeasably slow and memory
+intensive.
+
+\begin{itemize}
+\item 15s page load -> 0.01s page load
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:orgab050f4},fragile]{How this will work}
+ \begin{itemize}
+\item live coding
+\end{itemize}
+
+\begin{block}{Tools}
+\begin{itemize}
+\item \texttt{pgcli} \url{https://github.com/dbcli/pgcli}
+\item \texttt{dbeaver} \url{https://dbeaver.io/}
+\item \texttt{postico} \url{https://eggerapps.at/postico/}
+\end{itemize}
+\end{block}
+\end{frame}
+
+
+\section{Database Basics}
+\label{sec:org09822ff}
+
+\begin{frame}[label={sec:orge4ee224}]{Structure}
+\begin{itemize}
+\item tables
+\item columns
+\item data type
+\item indexes
+\item constraints (pk, unique, check, fk)
+\item foreign key
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:org2c5e5ef},fragile]{Querying}
+ \begin{itemize}
+\item \texttt{insert}
+\item \texttt{update}
+\item \texttt{delete}
+\item \texttt{select}
+\end{itemize}
+\end{frame}
+
+\section{Powers}
+\label{sec:orga9b6b65}
+
+\begin{frame}[label={sec:org53230ad}]{Joins}
+\begin{block}{Relationships}
+\begin{itemize}
+\item many-to-many
+\item one-to-many
+\item many-to-one
+\end{itemize}
+\end{block}
+
+\begin{block}{Join Types}
+\begin{itemize}
+\item left join
+\item inner join
+\end{itemize}
+\end{block}
+\end{frame}
+
+\begin{frame}[label={sec:orgad5a242},fragile]{Aggregations}
+ count things, sum things.
+
+\begin{itemize}
+\item \texttt{count}
+\item \texttt{sum}
+\item \texttt{avg}
+\end{itemize}
+
+aggregates can use
+
+\begin{itemize}
+\item \texttt{group by}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[label={sec:org423d70e},fragile]{Geolocation}
+ \begin{itemize}
+\item GeoJSON
+\item \texttt{ST\_} functions
+\end{itemize}
+
+\url{https://postgis.net/}
+\end{frame}
+
+\section{Considerations}
+\label{sec:org44304b4}
+
+\begin{frame}[label={sec:org72e20a9}]{Your ORM}
+\begin{itemize}
+\item turns query results into objects.
+\item simplifies querying the database
+\item isn't magic
+\end{itemize}
+
+To become more confortable with your ORM and SQL
+
+\begin{itemize}
+\item log your sql queries
+\item all ORM's have raw query ability for a reason.
+\end{itemize}
+\end{frame}
+\end{document}

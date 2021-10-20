@@ -59,7 +59,9 @@ export const beforeEach = async(fun: (connection: Connection) => void) => {
   }
 }
 
-export const runAllSteps = async (connection: Connection) => {  
+export const runAllSteps = async (connection: Connection) => {
+  await connection.synchronize(true);
+
   for (let b of blocks) {
     if (b.skip) {
       console.log(chalk.gray(`Skipping block '${b.name}'`));

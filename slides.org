@@ -1,0 +1,94 @@
+#+TITLE: SQL Literacy
+#+AUTHOR: Justin Schiff
+#+BEAMER_THEME: Szeged
+#+BEAMER_FRAME_LEVEL: 2
+
+* Intro
+
+** Why SQL Databases?
+
+- built for data storage and retrieval
+- fast and optimized for this task
+- data integrity
+- relational
+
+once your data reaches thousands/tens of thousands of records, doing
+the processing in javascript will be unfeasably slow and memory
+intensive.
+
+- 15s page load -> 0.01s page load
+
+** How this will work
+
+- live coding
+
+*** Tools
+
+- ~pgcli~ https://github.com/dbcli/pgcli
+- ~dbeaver~ https://dbeaver.io/
+- ~postico~ https://eggerapps.at/postico/
+
+
+* Database Basics
+
+** Structure
+
+- tables
+- columns
+- data type
+- indexes
+- constraints (pk, unique, check, fk)
+- foreign key
+
+** Querying
+
+- ~insert~
+- ~update~
+- ~delete~
+- ~select~
+
+* Powers
+
+** Joins
+
+*** Relationships
+   - many-to-many
+   - one-to-many
+   - many-to-one
+
+*** Join Types
+
+- left join
+- inner join
+
+** Aggregations
+
+count things, sum things.
+
+- ~count~
+- ~sum~
+- ~avg~
+
+aggregates can use
+
+- ~group by~
+
+** Geolocation
+
+- GeoJSON
+- ~ST_~ functions
+
+https://postgis.net/
+
+* Considerations
+
+** Your ORM
+
+- turns query results into objects.
+- simplifies querying the database
+- isn't magic
+
+To become more confortable with your ORM and SQL
+
+- log your sql queries
+- all ORM's have raw query ability for a reason.

@@ -273,7 +273,7 @@ const seedDatabase = async (connection: Connection) => {
     await manager.save(purchase2);
 
     const course = new Course();
-    course.name = "Course";
+    course.name  = "Course";
     await manager.save(course);
 
     userWithPurchases.courses    = [ course ];
